@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
-import { Send, Bot } from 'lucide-react';
+import { Send, Bot, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -26,6 +26,7 @@ export default function Messages() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [generatingAI, setGeneratingAI] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -95,6 +96,37 @@ export default function Messages() {
     }
   };
 
+  const handleGenerateAIReply = async (messageId: string, clientMessage: string) => {
+    setGeneratingAI(true);
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-auto-reply`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messageId,
+          clientMessage,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate AI reply');
+      }
+
+      if (selectedClient) {
+        loadMessages(selectedClient);
+      }
+    } catch (error) {
+      console.error('Error generating AI reply:', error);
+      alert('Erreur lors de la génération de la réponse IA');
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="mb-8">
@@ -130,40 +162,53 @@ export default function Messages() {
             <>
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${
-                      message.sender_type === 'artisan' ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
+                  <div key={message.id}>
                     <div
-                      className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                        message.sender_type === 'artisan'
-                          ? 'bg-primary-600 text-white'
-                          : message.sender_type === 'ai'
-                          ? 'bg-accent-100 text-gray-900'
-                          : 'bg-gray-100 text-gray-900'
+                      className={`flex ${
+                        message.sender_type === 'artisan' ? 'justify-end' : 'justify-start'
                       }`}
                     >
-                      {message.sender_type === 'ai' && (
-                        <div className="flex items-center gap-2 mb-1">
-                          <Bot size={16} className="text-accent-600" />
-                          <span className="text-xs font-semibold text-accent-600">
-                            Réponse automatique
-                          </span>
-                        </div>
-                      )}
-                      <p>{message.content}</p>
-                      <p
-                        className={`text-xs mt-1 ${
+                      <div
+                        className={`max-w-[70%] rounded-lg px-4 py-2 ${
                           message.sender_type === 'artisan'
-                            ? 'text-primary-100'
-                            : 'text-gray-500'
+                            ? 'bg-primary-600 text-white'
+                            : message.sender_type === 'ai'
+                            ? 'bg-accent-100 text-gray-900'
+                            : 'bg-gray-100 text-gray-900'
                         }`}
                       >
-                        {format(new Date(message.created_at), 'HH:mm', { locale: fr })}
-                      </p>
+                        {message.sender_type === 'ai' && (
+                          <div className="flex items-center gap-2 mb-1">
+                            <Bot size={16} className="text-accent-600" />
+                            <span className="text-xs font-semibold text-accent-600">
+                              Réponse automatique
+                            </span>
+                          </div>
+                        )}
+                        <p>{message.content}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            message.sender_type === 'artisan'
+                              ? 'text-primary-100'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          {format(new Date(message.created_at), 'HH:mm', { locale: fr })}
+                        </p>
+                      </div>
                     </div>
+                    {message.sender_type === 'client' && (
+                      <div className="flex justify-start mt-2">
+                        <button
+                          onClick={() => handleGenerateAIReply(message.id, message.content)}
+                          disabled={generatingAI}
+                          className="text-xs px-3 py-1 bg-accent-100 text-accent-700 rounded hover:bg-accent-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                        >
+                          <Sparkles size={14} />
+                          {generatingAI ? 'Génération...' : 'Répondre avec l\'IA'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

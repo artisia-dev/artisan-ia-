@@ -17,21 +17,35 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const { messageId, clientMessage } = await req.json();
 
-    const autoReply = generateAutoReply(clientMessage);
-
     const { data: message, error: messageError } = await supabase
       .from('messages')
-      .select('artisan_id, client_id')
+      .select('artisan_id, client_id, clients(name)')
       .eq('id', messageId)
       .maybeSingle();
 
     if (messageError || !message) {
       throw new Error('Message not found');
     }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('business_name')
+      .eq('id', message.artisan_id)
+      .maybeSingle();
+
+    const businessName = profile?.business_name || 'notre entreprise';
+
+    const autoReply = await generateAutoReplyWithClaude(
+      clientMessage,
+      businessName,
+      message.clients.name,
+      anthropicKey
+    );
 
     const { error: replyError } = await supabase.from('messages').insert([
       {
@@ -68,24 +82,58 @@ Deno.serve(async (req: Request) => {
   }
 });
 
-function generateAutoReply(message: string): string {
-  const lowerMessage = message.toLowerCase();
+async function generateAutoReplyWithClaude(
+  clientMessage: string,
+  businessName: string,
+  clientName: string,
+  anthropicKey: string
+): Promise<string> {
+  const systemPrompt = `Tu es l'assistant IA de ${businessName}, un professionnel artisan. Tu dois répondre aux messages des clients de manière poli, professionnel et en français.
 
-  if (lowerMessage.includes('devis') || lowerMessage.includes('prix')) {
-    return 'Bonjour ! Merci pour votre message. Je serais ravi de vous établir un devis personnalisé. Je reviens vers vous très rapidement avec une proposition adaptée à vos besoins.';
+Directives:
+- Sois courtois et professionnel
+- Sois bref mais utile (2-3 phrases maximum)
+- Parle au nom de l'artisan
+- Propose de reprendre contact rapidement
+- Ne fais pas de promesses que tu ne peux pas tenir
+- Sois centré sur les besoins du client`;
+
+  const userPrompt = `Le client "${clientName}" a envoyé ce message:
+"${clientMessage}"
+
+Génère une réponse automatique courtoise et professionnelle.`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': anthropicKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 256,
+      messages: [
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+      ],
+      system: systemPrompt,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Anthropic API error: ${error}`);
   }
 
-  if (lowerMessage.includes('rendez-vous') || lowerMessage.includes('rdv')) {
-    return 'Bonjour ! Merci de votre intérêt. Je vous propose de prendre rendez-vous pour discuter de votre projet. Je vous contacte dans les plus brefs délais pour convenir d\'un créneau.';
+  const data = await response.json();
+  const content = data.content[0];
+
+  if (content.type !== 'text') {
+    throw new Error('Unexpected response type from Anthropic');
   }
 
-  if (lowerMessage.includes('disponible') || lowerMessage.includes('disponibilité')) {
-    return 'Bonjour ! Merci pour votre message. Je consulte mon agenda et je vous confirme mes disponibilités rapidement.';
-  }
-
-  if (lowerMessage.includes('urgent') || lowerMessage.includes('rapidement')) {
-    return 'Bonjour ! J\'ai bien reçu votre message urgent. Je vous recontacte dans les plus brefs délais pour traiter votre demande en priorité.';
-  }
-
-  return 'Bonjour ! Merci pour votre message. Je l\'ai bien reçu et je vous réponds très rapidement. À bientôt !';
+  return content.text;
 }
