@@ -27,10 +27,13 @@ export default function Messages() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [togglingAI, setTogglingAI] = useState(false);
 
   useEffect(() => {
     if (user) {
       loadClients();
+      loadAISettings();
     }
   }, [user]);
 
@@ -54,6 +57,56 @@ export default function Messages() {
       console.error('Error loading clients:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAISettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('artisan_ai_settings')
+        .select('ai_enabled')
+        .eq('artisan_id', user!.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setAiEnabled(data?.ai_enabled || false);
+    } catch (error) {
+      console.error('Error loading AI settings:', error);
+    }
+  };
+
+  const toggleAI = async () => {
+    setTogglingAI(true);
+    try {
+      const { data: existing } = await supabase
+        .from('artisan_ai_settings')
+        .select('id')
+        .eq('artisan_id', user!.id)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('artisan_ai_settings')
+          .update({ ai_enabled: !aiEnabled })
+          .eq('artisan_id', user!.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('artisan_ai_settings')
+          .insert([{
+            artisan_id: user!.id,
+            ai_enabled: true,
+          }]);
+
+        if (error) throw error;
+      }
+
+      setAiEnabled(!aiEnabled);
+    } catch (error) {
+      console.error('Error toggling AI:', error);
+    } finally {
+      setTogglingAI(false);
     }
   };
 
@@ -129,10 +182,33 @@ export default function Messages() {
 
   return (
     <DashboardLayout>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
-        <p className="text-gray-600 mt-2">Communiquez avec vos clients</p>
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
+          <p className="text-gray-600 mt-2">Communiquez avec vos clients</p>
+        </div>
+        <button
+          onClick={toggleAI}
+          disabled={togglingAI}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+            aiEnabled
+              ? 'bg-accent-100 text-accent-700 hover:bg-accent-200'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          <Bot size={20} />
+          {togglingAI ? 'Chargement...' : aiEnabled ? 'IA Activée' : 'Activer l\'IA'}
+        </button>
       </div>
+
+      {aiEnabled && (
+        <div className="mb-6 p-4 bg-accent-50 border border-accent-200 rounded-lg flex items-center gap-3">
+          <div className="w-2 h-2 bg-accent-600 rounded-full animate-pulse"></div>
+          <span className="text-sm text-accent-700">
+            Les réponses automatiques par IA sont activées. Vous pouvez générer des réponses pour les messages clients.
+          </span>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-md h-[calc(100vh-250px)] flex">
         <div className="w-1/3 border-r border-gray-200 overflow-y-auto">
