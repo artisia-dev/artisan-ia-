@@ -2,44 +2,56 @@ import { useState } from 'react';
 
 interface StripeCheckoutProps {
   plan: 'starter' | 'pro' | 'premium';
-  onSuccess?: () => void;
+  label?: string;
+  className?: string;
 }
 
-export default function StripeCheckout({ plan, onSuccess }: StripeCheckoutProps) {
+export default function StripeCheckout({ plan, label, className }: StripeCheckoutProps) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const prices = {
-    starter: { amount: 29, priceId: 'price_starter' },
-    pro: { amount: 59, priceId: 'price_pro' },
-    premium: { amount: 99, priceId: 'price_premium' },
+    starter: 29,
+    pro: 59,
+    premium: 99,
   };
 
   const handleCheckout = async () => {
     setLoading(true);
+    setError('');
 
     try {
-      console.log('Stripe checkout for plan:', plan);
-      console.log('Price:', prices[plan].amount, '€');
+      const res = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan }),
+      });
 
-      alert('Intégration Stripe : Veuillez configurer votre clé Stripe pour activer les paiements. Consultez https://bolt.new/setup/stripe pour plus d\'informations.');
+      const data = await res.json();
 
-      if (onSuccess) {
-        onSuccess();
+      if (!res.ok) {
+        throw new Error(data.error || 'Erreur lors de la création de la session');
       }
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
+
+      window.location.href = data.url;
+    } catch (err: any) {
+      setError(err.message || 'Une erreur est survenue');
       setLoading(false);
     }
   };
 
   return (
-    <button
-      onClick={handleCheckout}
-      disabled={loading}
-      className="w-full px-6 py-3 bg-accent-600 text-white rounded-lg hover:bg-accent-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {loading ? 'Chargement...' : `S'abonner - ${prices[plan].amount}€/mois`}
-    </button>
+    <div className="w-full">
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        className={className || 'w-full py-3 rounded-lg font-semibold text-center transition-colors bg-accent-600 text-white hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed'}
+      >
+        {loading ? 'Redirection...' : (label || `Commencer — ${prices[plan]}€/mois`)}
+      </button>
+      {error && (
+        <p className="mt-2 text-sm text-red-600 text-center">{error}</p>
+      )}
+    </div>
   );
 }

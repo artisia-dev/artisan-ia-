@@ -9,6 +9,7 @@ import Messages from './pages/Messages';
 import Quotes from './pages/Quotes';
 import Appointments from './pages/Appointments';
 import Settings from './pages/Settings';
+import PaymentSuccess from './pages/PaymentSuccess';
 
 export default function App() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
               </PrivateRoute>
             }
           />
+          <Route path="/paiement-reussi" element={<PaymentSuccess />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </AuthProvider>

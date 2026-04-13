@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Check, MessageSquare, FileText, Calendar, BarChart3, Zap } from 'lucide-react';
+import StripeCheckout from '../components/StripeCheckout';
 
 export default function Landing() {
   const plans = [
@@ -171,16 +172,15 @@ export default function Landing() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  to="/register"
-                  className={`block w-full py-3 rounded-lg font-semibold text-center transition-colors ${
+                <StripeCheckout
+                  plan={plan.name.toLowerCase() as 'starter' | 'pro' | 'premium'}
+                  label="Commencer"
+                  className={`block w-full py-3 rounded-lg font-semibold text-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     plan.popular
                       ? 'bg-accent-600 text-white hover:bg-accent-700'
                       : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                   }`}
-                >
-                  Commencer
-                </Link>
+                />
               </div>
             ))}
           </div>
