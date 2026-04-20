@@ -7,6 +7,7 @@ import {
   Calendar,
   Settings,
   LogOut,
+  UserPlus,
 } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -20,6 +21,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation = [
     { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Leads', href: '/leads', icon: UserPlus },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Devis', href: '/quotes', icon: FileText },
     { name: 'Rendez-vous', href: '/appointments', icon: Calendar },

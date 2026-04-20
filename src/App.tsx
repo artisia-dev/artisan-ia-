@@ -10,6 +10,7 @@ import Quotes from './pages/Quotes';
 import Appointments from './pages/Appointments';
 import Settings from './pages/Settings';
 import PaymentSuccess from './pages/PaymentSuccess';
+import Leads from './pages/Leads';
 
 export default function App() {
   return (
@@ -56,6 +57,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Settings />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/leads"
+            element={
+              <PrivateRoute>
+                <Leads />
               </PrivateRoute>
             }
           />
