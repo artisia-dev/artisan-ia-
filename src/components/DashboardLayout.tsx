@@ -9,6 +9,7 @@ import {
   LogOut,
   UserPlus,
 } from 'lucide-react';
+import NotificationBell from './NotificationBell';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -17,7 +18,7 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
 
   const navigation = [
     { name: 'Tableau de bord', href: '/dashboard', icon: LayoutDashboard },
@@ -71,9 +72,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </aside>
 
-        <main className="ml-64 flex-1 p-8">
-          {children}
-        </main>
+        <div className="ml-64 flex-1 flex flex-col min-h-screen">
+          <header className="sticky top-0 z-40 bg-white border-b border-gray-200 px-8 py-3 flex items-center justify-end gap-3">
+            <NotificationBell />
+            <div className="w-px h-6 bg-gray-200" />
+            <div className="text-sm text-gray-600">
+              {user?.email}
+            </div>
+          </header>
+          <main className="flex-1 p-8">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   );
