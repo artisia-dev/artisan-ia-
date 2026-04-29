@@ -29,6 +29,7 @@ export default function Messages() {
   const [generatingAI, setGeneratingAI] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [togglingAI, setTogglingAI] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -46,7 +47,7 @@ export default function Messages() {
   const loadClients = async () => {
     try {
       const { data, error } = await supabase
-        .from('clients')
+        .from('leads')
         .select('id, name')
         .eq('artisan_id', user!.id)
         .order('name');
@@ -70,41 +71,43 @@ export default function Messages() {
 
       if (error) throw error;
       setAiEnabled(data?.ai_enabled || false);
-    } catch (error) {
+      setAiError(null);
+    } catch (error: any) {
       console.error('Error loading AI settings:', error);
+      if (error?.code === 'PGRST205' || error?.message?.includes("Could not find the table")) {
+        setAiError(
+          "La table 'artisan_ai_settings' n'existe pas dans Supabase. Exécutez le script SQL fourni dans le SQL Editor de votre tableau de bord Supabase pour créer toutes les tables nécessaires."
+        );
+      } else {
+        setAiError(error?.message || 'Erreur lors du chargement des paramètres IA');
+      }
     }
   };
 
   const toggleAI = async () => {
+    if (!user) return;
     setTogglingAI(true);
+    setAiError(null);
+    const newValue = !aiEnabled;
     try {
-      const { data: existing } = await supabase
+      const { error } = await supabase
         .from('artisan_ai_settings')
-        .select('id')
-        .eq('artisan_id', user!.id)
-        .maybeSingle();
+        .upsert(
+          { artisan_id: user.id, ai_enabled: newValue },
+          { onConflict: 'artisan_id' }
+        );
 
-      if (existing) {
-        const { error } = await supabase
-          .from('artisan_ai_settings')
-          .update({ ai_enabled: !aiEnabled })
-          .eq('artisan_id', user!.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('artisan_ai_settings')
-          .insert([{
-            artisan_id: user!.id,
-            ai_enabled: true,
-          }]);
-
-        if (error) throw error;
-      }
-
-      setAiEnabled(!aiEnabled);
-    } catch (error) {
+      if (error) throw error;
+      setAiEnabled(newValue);
+    } catch (error: any) {
       console.error('Error toggling AI:', error);
+      if (error?.code === 'PGRST205' || error?.message?.includes("Could not find the table")) {
+        setAiError(
+          "Impossible d'activer l'IA : la table 'artisan_ai_settings' n'existe pas dans Supabase. Ouvrez le SQL Editor de votre tableau de bord Supabase et exécutez le script SQL fourni."
+        );
+      } else {
+        setAiError(error?.message || "Erreur lors de l'activation de l'IA");
+      }
     } finally {
       setTogglingAI(false);
     }
@@ -201,7 +204,14 @@ export default function Messages() {
         </button>
       </div>
 
-      {aiEnabled && (
+      {aiError && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm font-semibold text-red-800 mb-1">Configuration requise</p>
+          <p className="text-sm text-red-700">{aiError}</p>
+        </div>
+      )}
+
+      {aiEnabled && !aiError && (
         <div className="mb-6 p-4 bg-accent-50 border border-accent-200 rounded-lg flex items-center gap-3">
           <div className="w-2 h-2 bg-accent-600 rounded-full animate-pulse"></div>
           <span className="text-sm text-accent-700">
