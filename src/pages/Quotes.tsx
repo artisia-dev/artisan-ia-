@@ -116,9 +116,23 @@ export default function Quotes() {
       );
 
       const json = await res.json();
-      if (!res.ok || !json.quote) throw new Error(json.error || 'Erreur lors de la génération');
+      if (!res.ok) throw new Error(json.error || 'Erreur lors de la génération');
 
-      const { title, description, items: aiItems } = json.quote;
+      // La fonction retourne { reply: "<JSON texte>" } — on extrait le JSON du texte
+      const rawText: string = json.reply ?? json.quote ?? '';
+      if (!rawText) throw new Error('Réponse vide de la fonction IA');
+
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('Format de réponse IA invalide');
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(jsonMatch[0]);
+      } catch {
+        throw new Error('Impossible de lire la réponse IA (JSON invalide)');
+      }
+
+      const { title, description, items: aiItems } = parsed;
 
       setFormData(prev => ({ ...prev, title: title || '', description: description || '' }));
       if (aiItems && aiItems.length > 0) {
