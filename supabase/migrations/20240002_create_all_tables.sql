@@ -70,22 +70,21 @@ CREATE TABLE IF NOT EXISTS quote_items (
 );
 ALTER TABLE quote_items DISABLE ROW LEVEL SECURITY;
 
--- 7. Table appointments
+-- 7. Table appointments (schéma avec date + time séparés)
 CREATE TABLE IF NOT EXISTS appointments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   artisan_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   client_id uuid REFERENCES clients(id) ON DELETE SET NULL,
   title text NOT NULL,
-  description text DEFAULT '',
-  start_time timestamptz NOT NULL,
-  end_time timestamptz NOT NULL,
-  status text DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
-  location text DEFAULT '',
+  date date NOT NULL,
+  time time NOT NULL,
+  status text DEFAULT 'en attente' CHECK (status IN ('confirmé', 'en attente', 'annulé')),
+  notes text DEFAULT '',
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE appointments DISABLE ROW LEVEL SECURITY;
 
--- 8. Table leads (si pas encore créée)
+-- 8. Table leads
 CREATE TABLE IF NOT EXISTS leads (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   artisan_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
