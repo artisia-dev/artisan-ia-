@@ -103,15 +103,17 @@ export default function Quotes() {
     setAiGenerating(true);
     setAiError('');
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-quote`;
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ description: aiPrompt }),
-      });
+      const res = await fetch(
+        'https://nplkuezoxjuqdtknoxwy.supabase.co/functions/v1/ai-auto-reply',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'generate-quote', description: aiPrompt }),
+        }
+      );
 
       const json = await res.json();
       if (!res.ok || !json.quote) throw new Error(json.error || 'Erreur lors de la génération');
