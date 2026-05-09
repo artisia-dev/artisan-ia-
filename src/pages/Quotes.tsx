@@ -97,7 +97,19 @@ export default function Quotes() {
   const removeItem = (i: number) => items.length > 1 && setItems(items.filter((_, idx) => idx !== i));
   const total      = () => items.reduce((s, it) => s + it.total, 0);
 
-  // ── IA generation ──
+  // ── IA generation helpers ──
+  const applyQuoteData = (title: any, description: any, aiItems: any[]) => {
+    setFormData(prev => ({ ...prev, title: title || '', description: description || '' }));
+    if (Array.isArray(aiItems) && aiItems.length > 0) {
+      setItems(aiItems.map((it: any) => ({
+        description: it.description || '',
+        quantity:    Number(it.quantity)   || 1,
+        unit_price:  Number(it.unit_price) || 0,
+        total:       (Number(it.quantity) || 1) * (Number(it.unit_price) || 0),
+      })));
+    }
+  };
+
   const handleGenerateWithAI = async () => {
     if (!aiPrompt.trim()) return;
     setAiGenerating(true);
@@ -115,21 +127,54 @@ export default function Quotes() {
         }
       );
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Erreur lors de la génération');
+      let json: any;
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error('Réponse non-JSON reçue de la fonction IA');
+      }
 
-      // La fonction retourne { reply: "<JSON texte>" } — on extrait le JSON du texte
-      const rawText: string = json.reply ?? json.quote ?? '';
-      if (!rawText) throw new Error('Réponse vide de la fonction IA');
+      if (!res.ok) throw new Error(json?.error || 'Erreur lors de la génération');
 
+      // Extrait le texte brut depuis tous les formats possibles de réponse :
+      // 1. { reply: "JSON string" }              — notre format
+      // 2. { content: [{ text: "JSON string" }] } — réponse Anthropic brute
+      // 3. { quote: { title, items, ... } }       — ancien format objet direct
+      let rawText = '';
+
+      if (typeof json?.reply === 'string' && json.reply.trim()) {
+        // Format attendu : { reply: "..." }
+        rawText = json.reply;
+      } else if (typeof json?.reply === 'object' && json.reply !== null) {
+        // reply est déjà un objet parsé
+        const { title, description, items: aiItems } = json.reply;
+        applyQuoteData(title, description, aiItems);
+        setShowAIModal(false); setAiPrompt(''); if (!showModal) setShowModal(true);
+        return;
+      } else if (Array.isArray(json?.content) && json.content.length > 0) {
+        // Réponse Anthropic brute : { content: [{ type: "text", text: "..." }] }
+        const block = json.content.find((b: any) => b?.type === 'text');
+        if (!block?.text) throw new Error('Bloc texte introuvable dans la réponse Anthropic');
+        rawText = block.text;
+      } else if (typeof json?.quote === 'object' && json.quote !== null) {
+        // Ancien format objet direct
+        const { title, description, items: aiItems } = json.quote;
+        applyQuoteData(title, description, aiItems);
+        setShowAIModal(false); setAiPrompt(''); if (!showModal) setShowModal(true);
+        return;
+      } else {
+        throw new Error('Format de réponse IA non reconnu');
+      }
+
+      // Extrait le premier bloc JSON du texte (robuste aux textes parasites)
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('Format de réponse IA invalide');
+      if (!jsonMatch || !jsonMatch[0]) throw new Error('Aucun JSON trouvé dans la réponse IA');
 
       let parsed: any;
       try {
         parsed = JSON.parse(jsonMatch[0]);
       } catch {
-        throw new Error('Impossible de lire la réponse IA (JSON invalide)');
+        throw new Error('JSON invalide dans la réponse IA');
       }
 
       const { title, description, items: aiItems } = parsed;
