@@ -24,7 +24,7 @@ export default function Landing() {
       features: [
         'Jusqu\'à 200 clients',
         'Messagerie intelligente',
-        'Devis illimités',
+        'Génération de devis par IA',
         'Calendrier de rendez-vous',
         'Statistiques avancées',
         'Réponses IA personnalisées',
