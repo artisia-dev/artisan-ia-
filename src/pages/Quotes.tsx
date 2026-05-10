@@ -13,7 +13,6 @@ interface Client {
   name: string;
   email: string;
   phone: string;
-  address: string;
 }
 
 interface Quote {
@@ -24,7 +23,7 @@ interface Quote {
   status: string;
   created_at: string;
   client_id: string;
-  clients: Client;
+  leads: Client;
 }
 
 interface QuoteItem {
@@ -67,7 +66,7 @@ export default function Quotes() {
     try {
       const { data, error } = await supabase
         .from('quotes')
-        .select('*, clients(id, name, email, phone, address)')
+        .select('*, leads(id, name, email, phone)')
         .eq('artisan_id', user!.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -79,7 +78,7 @@ export default function Quotes() {
   const loadClients = async () => {
     try {
       const { data, error } = await supabase
-        .from('clients').select('*').eq('artisan_id', user!.id).order('name');
+        .from('leads').select('id, name, email, phone').eq('artisan_id', user!.id).order('name');
       if (error) throw error;
       setClients(data || []);
     } catch (e) { console.error(e); }
@@ -172,9 +171,9 @@ export default function Quotes() {
     doc.setFontSize(12);
     doc.text(`Devis N°: ${quote.quote_number}`, 20, 40);
     doc.text(`Date: ${format(new Date(quote.created_at), 'dd/MM/yyyy', { locale: fr })}`, 20, 50);
-    doc.text('Client:', 20, 70); doc.text(quote.clients.name, 20, 78);
-    if (quote.clients.address) doc.text(quote.clients.address, 20, 86);
-    if (quote.clients.phone)   doc.text(quote.clients.phone, 20, 94);
+    doc.text('Client:', 20, 70); doc.text(quote.leads?.name ?? '', 20, 78);
+    if (quote.leads?.email) doc.text(quote.leads.email, 20, 86);
+    if (quote.leads?.phone) doc.text(quote.leads.phone, 20, 94);
     doc.text(`Objet: ${quote.title}`, 20, 110);
     let y = 130;
     doc.text('Description', 20, y); doc.text('Qté', 120, y);
@@ -252,7 +251,7 @@ export default function Quotes() {
                 return (
                   <tr key={quote.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-4 text-sm font-mono font-medium text-gray-700">{quote.quote_number}</td>
-                    <td className="px-5 py-4 text-sm text-gray-900 font-medium">{quote.clients?.name}</td>
+                    <td className="px-5 py-4 text-sm text-gray-900 font-medium">{quote.leads?.name}</td>
                     <td className="px-5 py-4 text-sm text-gray-700">{quote.title}</td>
                     <td className="px-5 py-4 text-sm font-semibold text-gray-900">{quote.amount.toFixed(2)} €</td>
                     <td className="px-5 py-4">
