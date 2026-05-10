@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
-import { Plus, FileText, Download, Sparkles, X, Loader2, Wand2 } from 'lucide-react';
+import { Plus, FileText, Download, Sparkles, X, Loader2, Wand2, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -41,6 +41,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }>
   sent:     { label: 'Envoyé',    bg: 'bg-blue-100',    text: 'text-blue-700'   },
   accepted: { label: 'Accepté',   bg: 'bg-emerald-100', text: 'text-emerald-700'},
   rejected: { label: 'Refusé',    bg: 'bg-red-100',     text: 'text-red-700'    },
+  paid:     { label: 'Payé',      bg: 'bg-violet-100',  text: 'text-violet-700' },
 };
 
 export default function Quotes() {
@@ -163,6 +164,18 @@ export default function Quotes() {
     finally { setSaving(false); }
   };
 
+  // ── Marquer comme payé ──
+  const markAsPaid = async (quoteId: string) => {
+    try {
+      const { error } = await supabase
+        .from('quotes')
+        .update({ status: 'paid' })
+        .eq('id', quoteId);
+      if (error) throw error;
+      setQuotes(prev => prev.map(q => q.id === quoteId ? { ...q, status: 'paid' } : q));
+    } catch (e) { console.error(e); }
+  };
+
   // ── PDF ──
   const generatePDF = async (quote: Quote) => {
     const { data: itemsData } = await supabase.from('quote_items').select('*').eq('quote_id', quote.id);
@@ -260,13 +273,24 @@ export default function Quotes() {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      <button
-                        onClick={() => generatePDF(quote)}
-                        title="Télécharger le PDF"
-                        className="p-2 rounded-lg text-primary-600 hover:bg-primary-50 hover:text-primary-800 transition-colors"
-                      >
-                        <Download size={17} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {quote.status !== 'paid' && (
+                          <button
+                            onClick={() => markAsPaid(quote.id)}
+                            title="Marquer comme payé"
+                            className="p-2 rounded-lg text-violet-600 hover:bg-violet-50 hover:text-violet-800 transition-colors"
+                          >
+                            <CheckCircle size={17} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => generatePDF(quote)}
+                          title="Télécharger le PDF"
+                          className="p-2 rounded-lg text-primary-600 hover:bg-primary-50 hover:text-primary-800 transition-colors"
+                        >
+                          <Download size={17} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
