@@ -38,7 +38,7 @@ export default function Landing() {
       features: [
         'Clients illimités',
         'Messagerie intelligente',
-        'Devis illimités',
+        'Génération de devis par IA',
         'Calendrier de rendez-vous',
         'Statistiques avancées',
         'Réponses IA personnalisées',
