@@ -110,72 +110,32 @@ export default function Quotes() {
     }
   };
 
-  // ── Test de la Edge Function au chargement (debug) ──────────────────────
-  useEffect(() => {
-    const testEdgeFunction = async () => {
-      console.log('[ArtisIA] 🔍 Test Edge Function au chargement...');
-      try {
-        const res = await fetch(
-          'https://nplkuezoxjuqdtknoxwy.supabase.co/functions/v1/ai-auto-reply',
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ action: 'generate-quote', description: 'Pose de carrelage salle de bain 10m²' }),
-          }
-        );
-        const rawText = await res.text();
-        console.log('[ArtisIA] 📡 HTTP Status:', res.status, res.ok ? 'OK' : 'ERREUR');
-        console.log('[ArtisIA] 📦 Réponse brute (texte):', rawText);
-        try {
-          const parsed = JSON.parse(rawText);
-          console.log('[ArtisIA] ✅ JSON parsé:', parsed);
-          console.log('[ArtisIA] 🔑 Clés disponibles:', Object.keys(parsed));
-        } catch {
-          console.warn('[ArtisIA] ⚠️ Réponse non-JSON:', rawText);
-        }
-      } catch (e) {
-        console.error('[ArtisIA] ❌ Erreur réseau:', e);
-      }
-    };
-    testEdgeFunction();
-  }, []);
-
   const handleGenerateWithAI = async () => {
     if (!aiPrompt.trim()) return;
     setAiGenerating(true);
     setAiError('');
     try {
-      console.log('[ArtisIA] 🚀 Appel Edge Function avec prompt:', aiPrompt);
-      const res = await fetch(
-        'https://nplkuezoxjuqdtknoxwy.supabase.co/functions/v1/ai-auto-reply',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ action: 'generate-quote', description: aiPrompt }),
-        }
-      );
-
-      console.log('[ArtisIA] 📡 HTTP Status:', res.status, res.ok ? 'OK' : 'ERREUR');
+      const res = await fetch('/api/generate-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: aiPrompt }),
+      });
 
       let json: any;
       try {
         const rawText = await res.text();
-        console.log('[ArtisIA] 📦 Réponse brute:', rawText);
         json = JSON.parse(rawText);
-        console.log('[ArtisIA] ✅ JSON parsé:', json);
-        console.log('[ArtisIA] 🔑 Clés:', Object.keys(json ?? {}));
-      } catch (parseErr) {
-        console.error('[ArtisIA] ❌ Erreur de parsing JSON:', parseErr);
-        throw new Error('Réponse non-JSON reçue de la fonction IA');
+      } catch {
+        throw new Error('Réponse non-JSON reçue du serveur');
       }
 
-      if (!res.ok) throw new Error(json?.error || 'Erreur lors de la génération');
+      if (!res.ok) {
+        const rawError: string = json?.error || '';
+        if (rawError.includes('credit') || rawError.includes('balance')) {
+          throw new Error('Crédits IA insuffisants. Veuillez recharger votre compte Anthropic sur console.anthropic.com');
+        }
+        throw new Error(rawError || 'Erreur lors de la génération');
+      }
 
       // Extrait le texte brut depuis tous les formats possibles de réponse :
       // 1. { reply: "JSON string" }              — notre format
