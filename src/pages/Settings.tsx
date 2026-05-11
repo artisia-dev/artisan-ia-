@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import DashboardLayout from '../components/DashboardLayout';
-import { Save, CreditCard } from 'lucide-react';
+import StripeCheckout from '../components/StripeCheckout';
+import { Save } from 'lucide-react';
 
 interface Profile {
   business_name: string;
@@ -237,16 +238,28 @@ export default function Settings() {
                 </span>
               </div>
 
-              <button
-                className="w-full px-6 py-3 border border-primary-600 text-primary-600 rounded-lg hover:bg-primary-50 transition-colors flex items-center justify-center gap-2"
-              >
-                <CreditCard size={20} />
-                Gérer l'abonnement
-              </button>
-
-              <p className="text-xs text-gray-500 text-center">
-                Vous serez redirigé vers Stripe pour gérer votre abonnement
-              </p>
+              <div className="space-y-3 pt-2">
+                <p className="text-sm font-semibold text-gray-700">Changer de formule :</p>
+                {([
+                  { key: 'starter', label: 'Starter — 29€/mois' },
+                  { key: 'pro',     label: 'Pro — 59€/mois' },
+                  { key: 'premium', label: 'Premium — 99€/mois' },
+                ] as const).map(({ key, label }) => (
+                  <StripeCheckout
+                    key={key}
+                    plan={key}
+                    label={`${profile.subscription_plan === key ? '✓ ' : ''}${label}`}
+                    className={`block w-full py-2.5 rounded-xl font-semibold text-center text-sm transition-all border-2 ${
+                      profile.subscription_plan === key
+                        ? 'bg-primary-50 border-primary-500 text-primary-700'
+                        : 'bg-white border-gray-200 text-gray-700 hover:border-primary-400 hover:bg-primary-50'
+                    }`}
+                  />
+                ))}
+                <p className="text-xs text-gray-400 text-center pt-1">
+                  Redirection sécurisée vers Stripe
+                </p>
+              </div>
             </div>
           </div>
 
