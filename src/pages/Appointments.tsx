@@ -33,9 +33,12 @@ const STATUS_CONFIG = {
   'annulé':     { label: 'Annulé',     icon: XCircle,       bg: 'bg-red-100',     text: 'text-red-600',     dot: 'bg-red-500'     },
 };
 
-const EMPTY_FORM = {
+const EMPTY_FORM: {
+  client_id: string; title: string; date: string;
+  time: string; status: 'confirmé' | 'en attente' | 'annulé'; notes: string;
+} = {
   client_id: '', title: '', date: format(new Date(), 'yyyy-MM-dd'),
-  time: '09:00', status: 'en attente' as const, notes: '',
+  time: '09:00', status: 'en attente', notes: '',
 };
 
 export default function Appointments() {

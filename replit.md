@@ -41,9 +41,10 @@ A SaaS platform for French-speaking artisans — an intelligent assistant to man
 
 ## Deployment
 
-- Target: Static site
+- Target: Autoscale (Node.js server)
 - Build command: `npm run build`
-- Public directory: `dist`
+- Run command: `npm start`
+- The production server (`server.js`) serves the built `dist/` folder and handles the Stripe `/api/create-checkout-session` endpoint.
 
 ## Environment Variables
 
