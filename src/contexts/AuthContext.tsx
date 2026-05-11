@@ -31,35 +31,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const ensureProfile = async (userId: string, businessName = '') => {
+    await supabase.from('profiles').upsert(
+      { id: userId, business_name: businessName },
+      { onConflict: 'id', ignoreDuplicates: true }
+    );
+  };
+
   const signUp = async (email: string, password: string, businessName: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
-
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: data.user.id,
-            business_name: businessName,
-          },
-        ]);
-
-      if (profileError) throw profileError;
-    }
+    if (data.user) await ensureProfile(data.user.id, businessName);
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    if (data.user) await ensureProfile(data.user.id);
   };
 
   const signOut = async () => {
